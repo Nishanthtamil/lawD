@@ -1,0 +1,59 @@
+/* src/index.css */
+:root {
+  /* Black & Silver Color Palette */
+  --bg-primary: #121212; /* Deep black for main background */
+  --bg-secondary: #1E1E1E; /* Lighter black for cards, sidebars */
+  --bg-tertiary: #2C2C2C; /* Hover/active state background */
+  
+  --border-color: #4A4A4A; /* "Silver" for borders and dividers */
+  
+  --text-primary: #E0E0E0; /* Light "silver" for main text */
+  --text-secondary: #AAAAAA; /* Dimmer "silver" for hints, meta text */
+
+  --accent-silver: #CCCCCC; /* Bright silver for key buttons */
+  --accent-silver-text: #121212; /* Text for on-top of bright silver */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Apply global theme */
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for a more integrated feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
