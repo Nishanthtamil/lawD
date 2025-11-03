@@ -1,0 +1,23 @@
+# Environment variables
+backend/.env
+.env
+.env.local
+
+# Node.js
+frontend/node_modules/
+frontend/build/
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+hybrid_retrieval.py
+junior_assistant.py
+main.py
+National_Insurance_Co_Ltd_vs_Nitin_Khandelwal_on_8_May_2008.PDF
+summary_National_Insurance_Co_Ltd_vs_Nitin_Khandelwal_on_8_May_2008.PDF.txt
+constitution-of-india/
