@@ -1,8 +1,8 @@
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import ChatAssistant from './components/ChatAssistant';
 import DocumentSummarizer from './components/DocumentSummarizer';
+import { HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineScale } from 'react-icons/hi';
 import './App.css';
 
 function App() {
@@ -11,16 +11,18 @@ function App() {
       <div className="app-layout">
         <nav className="sidebar">
           <div className="sidebar-header">
-            <h1>⚖️ LawD</h1>
+            <h1><HiOutlineScale /> LawD</h1>
             <p>Indian Constitution AI</p>
           </div>
           
           <div className="nav-links">
             <NavLink to="/" className="nav-link" end>
-               Legal Assistant Chat
+              <HiOutlineChatAlt2 size={20} />
+              <span>Your Legal Assistant</span>
             </NavLink>
             <NavLink to="/summarize" className="nav-link">
-               Document Summarization
+              <HiOutlineDocumentText size={20} />
+              <span>Document Summarization</span>
             </NavLink>
           </div>
           

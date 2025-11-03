@@ -1,35 +1,45 @@
-/* src/index.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
   /* Black & Silver Color Palette */
-  --bg-primary: #121212; /* Deep black for main background */
-  --bg-secondary: #1E1E1E; /* Lighter black for cards, sidebars */
-  --bg-tertiary: #2C2C2C; /* Hover/active state background */
+  --bg-primary: #121212; 
+  --bg-secondary: #1E1E1E;
+  --bg-tertiary: #2C2C2C; 
   
-  --border-color: #4A4A4A; /* "Silver" for borders and dividers */
+  --border-color: #4A4A4A; 
   
-  --text-primary: #E0E0E0; /* Light "silver" for main text */
-  --text-secondary: #AAAAAA; /* Dimmer "silver" for hints, meta text */
+  --text-primary: #E0E0E0; 
+  --text-secondary: #AAAAAA; 
 
-  --accent-silver: #CCCCCC; /* Bright silver for key buttons */
-  --accent-silver-text: #121212; /* Text for on-top of bright silver */
+  --accent-silver: #CCCCCC;
+  --accent-silver-text: #121212;
+
+  --shadow-color: rgba(0, 0, 0, 0.2); /* For subtle depth */
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  /* Use new professional font */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Apply global theme */
   background-color: var(--bg-primary);
   color: var(--text-primary);
+
+  /* Default transition for all elements */
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+  background: var(--bg-tertiary);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
 }
 
 * {
@@ -40,18 +50,19 @@ code {
   min-height: 100vh;
 }
 
-/* Custom scrollbar for a more integrated feel */
+/* Refined scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 4px;
+  border-radius: 5px;
+  border: 2px solid var(--bg-primary); /* Adds padding to the thumb */
 }
 
 ::-webkit-scrollbar-thumb:hover {

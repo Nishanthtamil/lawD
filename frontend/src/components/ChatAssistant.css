@@ -1,17 +1,16 @@
-/* src/components/ChatAssistant.css */
-
 .chat-page-container {
-  flex: 1; /* Fills the .main-content area */
+  flex: 1; 
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Key for layout */
+  overflow: hidden;
   height: 100%;
 }
 
 .chat-messages-wrapper {
-  flex: 1; /* Takes up all space, pushing input down */
-  overflow-y: auto; /* This is the scrollable part */
-  padding: 2rem;
+  flex: 1;
+  overflow-y: auto; 
+  /* Add more padding for breathing room */
+  padding: 2.5rem; 
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
@@ -25,7 +24,8 @@
 
 .chat-welcome h2 {
   color: var(--text-primary);
-  font-size: 2rem;
+  font-size: 2.2rem; /* Slightly larger */
+  font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
@@ -48,12 +48,13 @@
   cursor: pointer;
   font-size: 0.9rem;
   color: var(--text-primary);
-  transition: all 0.2s;
+  transition: all 0.2s ease; /* Use 'ease' */
 }
 
 .example-btn:hover {
   background: var(--bg-tertiary);
   border-color: var(--accent-silver);
+  color: var(--accent-silver);
 }
 
 .message {
@@ -71,11 +72,11 @@
 
 .message.user {
   flex-direction: row-reverse;
-  margin-left: auto; /* Aligns user messages to the right */
+  margin-left: auto;
 }
 
 .message.assistant {
-  margin-right: auto; /* Aligns assistant messages to the left */
+  margin-right: auto; 
 }
 
 .message-avatar {
@@ -85,10 +86,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.5rem; /* Icon size will be controlled by this */
   flex-shrink: 0;
   background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  /* Use shadow for depth instead of border */
+  box-shadow: 0 2px 4px var(--shadow-color);
+  color: var(--text-primary);
 }
 
 .message-content {
@@ -97,8 +100,10 @@
 
 .message-text {
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 1rem;
+  /* Use shadow for depth */
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color); /* Keep a subtle border */
+  padding: 1rem 1.25rem; /* More padding */
   border-radius: 12px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -110,12 +115,12 @@
   border-color: #555;
 }
 
+/* ... typing indicator styles (unchanged) ... */
 .typing-indicator {
   display: flex;
   gap: 0.3rem;
   padding: 1rem;
 }
-
 .typing-indicator span {
   width: 8px;
   height: 8px;
@@ -123,10 +128,8 @@
   background: var(--text-secondary);
   animation: typing 1.4s infinite;
 }
-
 .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
 .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); }
   30% { transform: translateY(-10px); }
@@ -134,12 +137,15 @@
 
 /* Fixed Input Area at the bottom */
 .chat-input-area {
-  flex-shrink: 0; /* Prevents this area from shrinking */
-  padding: 1rem 2rem;
+  flex-shrink: 0; 
+  padding: 1rem 2rem 1.5rem 2rem; /* More bottom padding */
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  background: var(--bg-primary); /* Matches body, feels seamless */
+  background: var(--bg-primary); 
+  /* This is the "shelf" effect, separating input from content */
+  box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10;
 }
 
 .chat-input-form {
@@ -149,6 +155,12 @@
   padding: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 12px;
+  /* Add focus state to the whole form */
+  transition: border-color 0.2s ease;
+}
+
+.chat-input-form:focus-within {
+  border-color: var(--accent-silver);
 }
 
 .chat-input {
@@ -157,6 +169,7 @@
   border: none;
   border-radius: 8px;
   font-size: 1rem;
+  font-family: 'Inter', sans-serif; /* Ensure font is inherited */
   background: transparent;
   color: var(--text-primary);
 }
@@ -172,12 +185,19 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
-  transition: background 0.3s;
+  font-weight: 600; /* Bolder */
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #FFFFFF; /* Brighter silver on hover */
+  background: #FFFFFF; 
+  transform: translateY(-1px); /* Subtle lift */
+}
+
+/* Add press-down feedback */
+.send-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .send-btn:disabled {

@@ -1,4 +1,3 @@
-/* src/App.css */
 * {
   margin: 0;
   padding: 0;
@@ -8,7 +7,7 @@
 .app-layout {
   display: flex;
   height: 100vh;
-  overflow: hidden; /* Prevent body scroll */
+  overflow: hidden; 
 }
 
 .sidebar {
@@ -19,6 +18,7 @@
   flex-direction: column;
   flex-shrink: 0;
   padding: 1.5rem;
+  transition: width 0.2s ease; /* Added for potential future collapse */
 }
 
 .sidebar-header {
@@ -30,11 +30,15 @@
   font-size: 1.5rem;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.5rem; /* Space icon */
 }
 
 .sidebar-header p {
   font-size: 0.9rem;
   color: var(--text-secondary);
+  padding-left: 0.2rem;
 }
 
 .nav-links {
@@ -50,7 +54,11 @@
   text-decoration: none;
   border-radius: 8px;
   font-weight: 500;
-  transition: all 0.2s;
+  /* Align icon and text */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; 
+  transition: all 0.2s ease; /* Smoother transition */
 }
 
 .nav-link:hover {
@@ -58,7 +66,6 @@
   color: var(--text-primary);
 }
 
-/* This .active class is provided by NavLink */
 .nav-link.active {
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -81,8 +88,6 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* This is key: main area doesn't scroll,
-     its children will */
   overflow: hidden; 
   height: 100vh;
 }
