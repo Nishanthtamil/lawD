@@ -1,44 +1,72 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
-import ChatAssistant from './components/ChatAssistant';
-import DocumentSummarizer from './components/DocumentSummarizer';
-import { HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineScale } from 'react-icons/hi';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import ChatPage from './pages/ChatPage';
+import DocumentsPage from './pages/DocumentsPage';
+import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="app-layout">
-        <nav className="sidebar">
-          <div className="sidebar-header">
-            <h1><HiOutlineScale /> LawD</h1>
-            <p>Indian Constitution AI</p>
-          </div>
-          
-          <div className="nav-links">
-            <NavLink to="/" className="nav-link" end>
-              <HiOutlineChatAlt2 size={20} />
-              <span>Your Legal Assistant</span>
-            </NavLink>
-            <NavLink to="/summarize" className="nav-link">
-              <HiOutlineDocumentText size={20} />
-              <span>Document Summarization</span>
-            </NavLink>
-          </div>
-          
-          <footer className="sidebar-footer">
-            <p>© 2025 Legal Assistant</p>
-          </footer>
-        </nav>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
 
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<ChatAssistant />} />
-            <Route path="/summarize" element={<DocumentSummarizer />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+          {/* Protected routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ChatPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat/:sessionId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ChatPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/documents"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DocumentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -8,21 +8,58 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, OTP
 from .serializers import UserSerializer
+import dotenv
 
-# For production, use Twilio or other SMS service
+
 def send_otp_sms(phone_number, otp):
     """
-    Send OTP via SMS
-    For development, just print it
-    In production, integrate with Twilio, AWS SNS, or other SMS gateway
+    Send OTP via SMS using Twilio
     """
-    print(f"\n{'='*50}")
-    print(f"📱 OTP for {phone_number}: {otp}")
-    print(f"{'='*50}\n")
-    # TODO: Integrate with SMS service
-    # import boto3  # For AWS SNS
-    # from twilio.rest import Client  # For Twilio
-    return True
+    try:
+
+        from twilio.rest import Client
+        import os
+        dotenv.load_dotenv()
+        
+        # Twilio credentials from environment
+        TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+        TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+        TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        # For development: if Twilio credentials not set, just print OTP
+        if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
+            print(f"\n{'='*50}")
+            print(f"📱 DEV MODE - OTP for {phone_number}: {otp}")
+            print(f"{'='*50}\n")
+            return True
+        
+        # Send via Twilio
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        
+        message = client.messages.create(
+            body=f"Your Legal Assistant verification code is: {otp}\n\nThis code expires in 5 minutes.",
+            from_=TWILIO_PHONE_NUMBER,
+            to=phone_number
+        )
+        
+        print(f"✅ OTP sent successfully via Twilio. SID: {message.sid}")
+        return True
+        
+    except ImportError:
+        # Twilio not installed - fallback to print
+        print(f"\n{'='*50}")
+        print(f"⚠️  Twilio not installed - DEV MODE")
+        print(f"📱 OTP for {phone_number}: {otp}")
+        print(f"{'='*50}\n")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Failed to send SMS via Twilio: {str(e)}")
+        # Fallback to printing OTP
+        print(f"\n{'='*50}")
+        print(f"📱 FALLBACK - OTP for {phone_number}: {otp}")
+        print(f"{'='*50}\n")
+        return True
 
 
 @api_view(['POST'])

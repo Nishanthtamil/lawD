@@ -27,8 +27,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color:  #0a0a0a;
+  color: #ffffff;
 
   /* Default transition for all elements */
   transition: background-color 0.2s ease, color 0.2s ease;
