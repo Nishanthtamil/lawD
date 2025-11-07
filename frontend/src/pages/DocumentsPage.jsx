@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axios';
+import { 
+  HiUpload, 
+  HiDocument, 
+  HiEye, 
+  HiDownload, 
+  HiTrash, 
+  HiSearch,
+  HiClock,
+  HiCheckCircle,
+  HiExclamationCircle
+} from 'react-icons/hi';
 import './DocumentsPage.css';
 
 function DocumentsPage() {
@@ -138,8 +149,11 @@ function DocumentsPage() {
     <div className="documents-page">
       <div className="documents-header">
         <div className="header-content">
-          <h1>📄 My Documents</h1>
-          <p>Upload and analyze legal documents with AI</p>
+          <h1 className="text-gradient">
+            <HiDocument className="header-icon" />
+            My Documents
+          </h1>
+          <p>Upload and analyze legal documents with AI-powered summarization</p>
         </div>
       </div>
 
@@ -167,7 +181,7 @@ function DocumentsPage() {
               {selectedFile ? (
                 <>
                   <div className="file-preview">
-                    <span className="file-icon">📎</span>
+                    <HiDocument className="file-icon" />
                     <div className="file-details">
                       <p className="file-name">{selectedFile.name}</p>
                       <p className="file-size">{formatFileSize(selectedFile.size)}</p>
@@ -186,7 +200,7 @@ function DocumentsPage() {
                 </>
               ) : (
                 <>
-                  <div className="upload-icon">📁</div>
+                  <HiUpload className="upload-icon" />
                   <p className="upload-text">Drop your document here or click to browse</p>
                   <p className="upload-hint">Supported: PDF, DOCX, TXT (Max 10MB)</p>
                 </>
@@ -228,12 +242,12 @@ function DocumentsPage() {
               >
                 {uploading ? (
                   <>
-                    <span className="spinner-small"></span>
+                    <div className="spinner-small"></div>
                     Uploading...
                   </>
                 ) : (
                   <>
-                    <span>⬆️</span>
+                    <HiUpload size={20} />
                     Upload & Analyze
                   </>
                 )}
@@ -276,19 +290,28 @@ function DocumentsPage() {
 
                 <div className="doc-status">
                   {doc.status === 'pending' && (
-                    <span className="status-badge pending">⏳ Pending</span>
+                    <span className="status-badge pending">
+                      <HiClock size={16} />
+                      Pending
+                    </span>
                   )}
                   {doc.status === 'processing' && (
                     <span className="status-badge processing">
-                      <span className="spinner-tiny"></span>
+                      <div className="spinner-tiny"></div>
                       Processing
                     </span>
                   )}
                   {doc.status === 'completed' && (
-                    <span className="status-badge completed">✅ Completed</span>
+                    <span className="status-badge completed">
+                      <HiCheckCircle size={16} />
+                      Completed
+                    </span>
                   )}
                   {doc.status === 'failed' && (
-                    <span className="status-badge failed">❌ Failed</span>
+                    <span className="status-badge failed">
+                      <HiExclamationCircle size={16} />
+                      Failed
+                    </span>
                   )}
                 </div>
 
@@ -312,7 +335,8 @@ function DocumentsPage() {
                         alert(doc.summary); // Temporary
                       }}
                     >
-                      👁️ View Summary
+                      <HiEye size={16} />
+                      View Summary
                     </button>
                   )}
 
@@ -322,7 +346,12 @@ function DocumentsPage() {
                       onClick={() => handleSummarize(doc.id)}
                       disabled={processingDoc === doc.id}
                     >
-                      {processingDoc === doc.id ? '⏳' : '🔍'} Analyze
+                      {processingDoc === doc.id ? (
+                        <div className="spinner-tiny" />
+                      ) : (
+                        <HiSearch size={16} />
+                      )}
+                      Analyze
                     </button>
                   )}
 
@@ -330,14 +359,16 @@ function DocumentsPage() {
                     className="action-btn download"
                     onClick={() => handleDownload(doc)}
                   >
-                    💾 Download
+                    <HiDownload size={16} />
+                    Download
                   </button>
 
                   <button
                     className="action-btn delete"
                     onClick={() => handleDelete(doc.id)}
                   >
-                    🗑️ Delete
+                    <HiTrash size={16} />
+                    Delete
                   </button>
                 </div>
               </div>

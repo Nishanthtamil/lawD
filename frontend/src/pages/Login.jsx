@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { 
+  HiPhone, 
+  HiUser, 
+  HiArrowRight, 
+  HiArrowLeft,
+  HiInformationCircle,
+  HiExclamationCircle
+} from 'react-icons/hi';
 import './Login.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -13,7 +21,7 @@ function Login() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
   
   const { login } = useAuth();
@@ -125,7 +133,11 @@ function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="logo">
-            <div className="logo-icon">⚖️</div>
+            <div className="logo-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
+              </svg>
+            </div>
             <h1>Legal Assistant</h1>
           </div>
           <p className="tagline">AI-Powered Constitutional Law Research</p>
@@ -136,7 +148,7 @@ function Login() {
             <div className="form-group">
               <label htmlFor="phone">Phone Number</label>
               <div className="input-wrapper">
-                <span className="input-icon">📱</span>
+                <HiPhone className="input-icon" />
                 <input
                   id="phone"
                   type="tel"
@@ -153,7 +165,7 @@ function Login() {
 
             {error && (
               <div className="error-message">
-                <span className="error-icon">⚠️</span>
+                <HiExclamationCircle className="error-icon" />
                 {error}
               </div>
             )}
@@ -165,30 +177,30 @@ function Login() {
             >
               {loading ? (
                 <>
-                  <span className="spinner-small"></span>
+                  <div className="spinner-small"></div>
                   Sending OTP...
                 </>
               ) : (
                 <>
                   Continue
-                  <span className="btn-arrow">→</span>
+                  <HiArrowRight className="btn-arrow" />
                 </>
               )}
             </button>
 
             <div className="info-box">
-              <span className="info-icon">ℹ️</span>
+              <HiInformationCircle className="info-icon" />
               <p>You'll receive a 6-digit verification code via SMS</p>
             </div>
           </form>
         ) : (
           <form onSubmit={handleVerifyOTP} className="login-form">
             <div className="back-button" onClick={handleBack}>
-              <span>←</span> Change phone number
+              <HiArrowLeft /> Change phone number
             </div>
 
             <div className="phone-display">
-              <span className="phone-icon">📱</span>
+              <HiPhone className="phone-icon" />
               <span className="phone-text">{phoneNumber}</span>
             </div>
 
@@ -217,7 +229,7 @@ function Login() {
             <div className="form-group">
               <label htmlFor="name">Name (Optional)</label>
               <div className="input-wrapper">
-                <span className="input-icon">👤</span>
+                <HiUser className="input-icon" />
                 <input
                   id="name"
                   type="text"
@@ -232,7 +244,7 @@ function Login() {
 
             {error && (
               <div className="error-message">
-                <span className="error-icon">⚠️</span>
+                <HiExclamationCircle className="error-icon" />
                 {error}
               </div>
             )}
@@ -244,13 +256,13 @@ function Login() {
             >
               {loading ? (
                 <>
-                  <span className="spinner-small"></span>
+                  <div className="spinner-small"></div>
                   Verifying...
                 </>
               ) : (
                 <>
                   Verify & Continue
-                  <span className="btn-arrow">→</span>
+                  <HiArrowRight className="btn-arrow" />
                 </>
               )}
             </button>

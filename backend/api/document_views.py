@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.core.cache import cache
+from django_ratelimit.decorators import ratelimit
 
 import PyPDF2
 import docx
@@ -16,6 +18,7 @@ from langchain_groq import ChatGroq
 from .models import UserDocument
 from .serializers import UserDocumentSerializer
 from .views import GROQ_API_KEY, hybrid_query_with_groq
+from .tasks import process_document_async
 
 
 def read_uploaded_file_content(file):
@@ -52,6 +55,7 @@ def read_uploaded_file_content(file):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='30/m', method='GET')
 def list_documents(request):
     """
     Get all documents for current user
@@ -66,6 +70,7 @@ def list_documents(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
+@ratelimit(key='user', rate='5/m', method='POST')
 def upload_document(request):
     """
     Upload a document
@@ -107,11 +112,14 @@ def upload_document(request):
             file_size=file.size,
             file_type=file_extension.replace('.', ''),
             summary_type=summary_type,
-            status='pending'
+            processing_status='pending'
         )
         
+        # Queue document for async processing
+        process_document_async.delay(document.id)
+        
         return Response({
-            "message": "Document uploaded successfully",
+            "message": "Document uploaded successfully and queued for processing",
             "document": UserDocumentSerializer(document, context={'request': request}).data
         }, status=status.HTTP_201_CREATED)
         
@@ -284,11 +292,21 @@ Analysis:"""
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='60/m', method='GET')
 def get_document(request, document_id):
     """
     Get a specific document
     """
+    # Try to get summary from cache first
+    cache_key = f"document_summary_{document_id}"
+    cached_summary = cache.get(cache_key)
+    
     document = get_object_or_404(UserDocument, id=document_id, user=request.user)
+    
+    # Use cached summary if available and document is completed
+    if cached_summary and document.processing_status == 'completed':
+        document.summary = cached_summary
+    
     serializer = UserDocumentSerializer(document, context={'request': request})
     return Response({
         "document": serializer.data

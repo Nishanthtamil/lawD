@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import ChatPage from './pages/ChatPage';
 import DocumentsPage from './pages/DocumentsPage';
+import DocumentSummarizer from './components/DocumentSummarizer';
 import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
@@ -46,6 +47,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <DocumentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/documents/summarize"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DocumentSummarizer />
                 </Layout>
               </ProtectedRoute>
             }

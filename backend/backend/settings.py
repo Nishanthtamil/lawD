@@ -16,15 +16,21 @@ from datetime import timedelta
 
 # Load environment variables
 from dotenv import load_dotenv
-load_dotenv()
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# DEFINE BASE_DIR FIRST
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# LOAD THE .env FILE IMMEDIATELY
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-secret-key-here-change-in-production')
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -53,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django_ratelimit',
 ]
 
 MIDDLEWARE = [
@@ -208,3 +215,48 @@ NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
 
 # Groq API
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# Redis Configuration
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+
+# Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'legal_ai',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# Session Configuration
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+# Celery Configuration
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', REDIS_URL)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Celery Beat Schedule
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-sessions': {
+        'task': 'api.tasks.cleanup_expired_sessions',
+        'schedule': 3600.0,  # Run every hour
+    },
+    'cleanup-old-documents': {
+        'task': 'api.tasks.cleanup_old_documents',
+        'schedule': 86400.0,  # Run daily
+    },
+}
+
+# Rate Limiting Configuration
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_ENABLE = True

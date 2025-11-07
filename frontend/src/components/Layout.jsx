@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../utils/axios';
+import { 
+  HiMenuAlt3, 
+  HiX, 
+  HiPlus, 
+  HiChat, 
+  HiDocument, 
+  HiUser, 
+  HiLogout,
+  HiTrash,
+  HiChevronDown,
+  HiChevronUp,
+  HiSearch
+} from 'react-icons/hi';
 import './Layout.css';
 
 function Layout({ children }) {
@@ -83,11 +96,15 @@ function Layout({ children }) {
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="toggle-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? '◀' : '▶'}
+            {sidebarOpen ? <HiX size={18} /> : <HiMenuAlt3 size={18} />}
           </button>
           {sidebarOpen && (
             <div className="logo-sidebar">
-              <span className="logo-icon-sm">⚖️</span>
+              <div className="logo-icon-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
+                </svg>
+              </div>
               <span className="logo-text">Legal Assistant</span>
             </div>
           )}
@@ -100,7 +117,7 @@ function Layout({ children }) {
               onClick={createNewChat}
               disabled={loading}
             >
-              <span className="btn-icon">✨</span>
+              <HiPlus size={20} />
               New Chat
             </button>
 
@@ -122,7 +139,7 @@ function Layout({ children }) {
                       >
                         <div className="chat-item-content">
                           <div className="chat-item-header">
-                            <span className="chat-icon">💬</span>
+                            <HiChat size={16} className="chat-icon" />
                             <span className="chat-title">{session.title}</span>
                           </div>
                           <div className="chat-meta">
@@ -136,7 +153,7 @@ function Layout({ children }) {
                           onClick={(e) => deleteSession(session.id, e)}
                           title="Delete conversation"
                         >
-                          🗑️
+                          <HiTrash size={14} />
                         </button>
                       </Link>
                     ))
@@ -146,8 +163,12 @@ function Layout({ children }) {
 
               <div className="nav-section">
                 <Link to="/documents" className="nav-link">
-                  <span className="nav-icon">📄</span>
+                  <HiDocument size={20} className="nav-icon" />
                   <span>My Documents</span>
+                </Link>
+                <Link to="/documents/summarize" className="nav-link">
+                  <HiSearch size={20} className="nav-icon" />
+                  <span>Document Summarizer</span>
                 </Link>
               </div>
             </nav>
@@ -163,17 +184,17 @@ function Layout({ children }) {
                     <div className="user-name">{user?.name || 'User'}</div>
                     <div className="user-phone">{user?.phone_number}</div>
                   </div>
-                  <span className="menu-arrow">{showUserMenu ? '▲' : '▼'}</span>
+                  {showUserMenu ? <HiChevronUp size={16} /> : <HiChevronDown size={16} />}
                 </button>
 
                 {showUserMenu && (
                   <div className="user-dropdown">
                     <Link to="/profile" className="dropdown-item">
-                      <span className="dropdown-icon">👤</span>
+                      <HiUser size={18} className="dropdown-icon" />
                       Profile Settings
                     </Link>
                     <button onClick={handleLogout} className="dropdown-item">
-                      <span className="dropdown-icon">🚪</span>
+                      <HiLogout size={18} className="dropdown-icon" />
                       Logout
                     </button>
                   </div>

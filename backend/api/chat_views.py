@@ -4,6 +4,9 @@ from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -16,6 +19,7 @@ from .serializers import (
     ChatMessageSerializer
 )
 from .views import tools, SYSTEM_MESSAGE, GROQ_API_KEY
+from .tasks import cache_chat_session, generate_response_async
 
 # Initialize agent (same as before)
 agent_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, groq_api_key=GROQ_API_KEY)
@@ -24,6 +28,7 @@ agent_executor = create_agent(agent_llm, tools)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='30/m', method='GET')
 def list_chat_sessions(request):
     """
     Get all chat sessions for current user
@@ -60,12 +65,39 @@ def create_chat_session(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='60/m', method='GET')
 def get_chat_session(request, session_id):
     """
     Get a specific chat session with all messages
     """
+    # Try to get from cache first
+    cache_key = f"chat_session_{session_id}"
+    cached_data = cache.get(cache_key)
+    
+    if cached_data:
+        return Response({
+            "session": {
+                "id": session_id,
+                "messages": cached_data,
+                "cached": True
+            }
+        })
+    
     session = get_object_or_404(ChatSession, id=session_id, user=request.user)
     serializer = ChatSessionSerializer(session)
+    
+    # Cache the session data
+    messages_data = [
+        {
+            'id': msg.id,
+            'message': msg.content,
+            'role': msg.role,
+            'created_at': msg.created_at.isoformat()
+        }
+        for msg in session.messages.all()
+    ]
+    cache.set(cache_key, messages_data, timeout=3600)
+    
     return Response({
         "session": serializer.data
     })
@@ -111,6 +143,7 @@ def delete_chat_session(request, session_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([JSONParser])
+@ratelimit(key='user', rate='10/m', method='POST')
 def send_message(request, session_id):
     """
     Send a message in a chat session
