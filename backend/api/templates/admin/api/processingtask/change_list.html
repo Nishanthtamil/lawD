@@ -1,0 +1,143 @@
+{% extends "admin/change_list.html" %}
+{% load admin_urls static admin_list %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .task-dashboard {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .task-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+        }
+        .stat-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            min-width: 120px;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        .alert-section {
+            margin-top: 15px;
+        }
+        .alert {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .performance-metrics {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .metric {
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .metric-label {
+            font-size: 11px;
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}
+
+{% block content_title %}
+    <h1>Processing Task Monitoring Dashboard</h1>
+{% endblock %}
+
+{% block result_list %}
+    <div class="task-dashboard">
+        <h3>System Overview (Last 24 Hours)</h3>
+        
+        <div class="task-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ task_stats.total_24h }}</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #ffc107;">{{ task_stats.queued }}</div>
+                <div class="stat-label">Queued</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #007bff;">{{ task_stats.processing }}</div>
+                <div class="stat-label">Processing</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #28a745;">{{ task_stats.completed }}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #dc3545;">{{ task_stats.failed }}</div>
+                <div class="stat-label">Failed</div>
+            </div>
+        </div>
+        
+        <div class="performance-metrics">
+            <div class="metric">
+                <div class="metric-value">{{ success_rate }}%</div>
+                <div class="metric-label">Success Rate</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ avg_processing_times.public_document }}s</div>
+                <div class="metric-label">Avg Public Doc Time</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ avg_processing_times.personal_document }}s</div>
+                <div class="metric-label">Avg Personal Doc Time</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ stuck_tasks_count }}</div>
+                <div class="metric-label">Stuck Tasks</div>
+            </div>
+        </div>
+        
+        {% if stuck_tasks_count > 0 or task_stats.failed > 5 %}
+        <div class="alert-section">
+            <h4>System Alerts</h4>
+            {% if stuck_tasks_count > 0 %}
+            <div class="alert alert-danger">
+                <strong>Warning:</strong> {{ stuck_tasks_count }} task(s) have been processing for more than 1 hour and may be stuck.
+            </div>
+            {% endif %}
+            {% if task_stats.failed > 5 %}
+            <div class="alert alert-warning">
+                <strong>Notice:</strong> High number of failed tasks ({{ task_stats.failed }}) in the last 24 hours.
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    {{ block.super }}
+{% endblock %}

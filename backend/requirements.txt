@@ -26,3 +26,14 @@ PyPDF2>=3.0.0
 python-docx>=1.0.0
 Pillow>=10.0.0
 pytesseract>=0.3.10
+
+# Vector Database
+pymilvus>=2.3.0
+sentence-transformers>=2.2.0
+
+# Performance monitoring
+psutil>=5.9.0
+
+# Additional dependencies
+groq>=0.4.0
+python-magic>=0.4.27

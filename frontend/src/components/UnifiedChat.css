@@ -1,0 +1,605 @@
+/* Unified Chat Component Styles */
+
+.unified-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* Header */
+.chat-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-button {
+  padding: 0.5rem 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tab-button.active {
+  background: white;
+  color: #667eea;
+  border-color: white;
+}
+
+/* System Status */
+.system-status {
+  padding: 0.5rem 2rem;
+  background: #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.status-indicator {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator.online {
+  color: #28a745;
+}
+
+.status-indicator.offline {
+  color: #dc3545;
+}
+
+/* Chat Container */
+.chat-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sessions Sidebar */
+.sessions-sidebar {
+  width: 300px;
+  background: white;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+}
+
+.sessions-header {
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sessions-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #495057;
+}
+
+.sessions-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.session-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f8f9fa;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.session-item:hover {
+  background-color: #f8f9fa;
+}
+
+.session-item.active {
+  background-color: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.session-title {
+  font-weight: 500;
+  color: #212529;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-date {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+/* Messages Container */
+.messages-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.messages-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.welcome-message {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6c757d;
+}
+
+.welcome-message h2 {
+  color: #495057;
+  margin-bottom: 1rem;
+}
+
+/* Messages */
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.message.user-message {
+  align-self: flex-end;
+}
+
+.message.assistant-message {
+  align-self: flex-start;
+}
+
+.message-content {
+  padding: 1rem;
+  border-radius: 18px;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+.user-message .message-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-right-radius: 6px;
+}
+
+.assistant-message .message-content {
+  background: #f8f9fa;
+  color: #212529;
+  border: 1px solid #e9ecef;
+  border-bottom-left-radius: 6px;
+}
+
+.error-message .message-content {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.message-timestamp {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  padding: 0 0.5rem;
+}
+
+.user-message .message-timestamp {
+  text-align: right;
+}
+
+/* Message Sources */
+.message-sources {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.message-sources h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.source-item {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.source-score {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.source-type {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.source-content {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.875rem;
+  color: #495057;
+  line-height: 1.4;
+}
+
+/* Loading Indicator */
+.loading-indicator {
+  align-self: flex-start;
+  max-width: 80%;
+}
+
+.typing-animation {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  padding: 1rem;
+  color: #6c757d;
+  font-style: italic;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Input Container */
+.input-container {
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  background: white;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.input-wrapper textarea {
+  flex: 1;
+  border: 2px solid #e9ecef;
+  border-radius: 20px;
+  padding: 0.75rem 1rem;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  transition: border-color 0.2s ease;
+}
+
+.input-wrapper textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.send-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Documents Container */
+.documents-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Upload Section */
+.upload-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.upload-section h2 {
+  margin: 0 0 1rem 0;
+  color: #495057;
+}
+
+.upload-area {
+  border: 2px dashed #dee2e6;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.upload-area:hover {
+  border-color: #667eea;
+}
+
+.file-input {
+  margin-bottom: 1rem;
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.upload-progress {
+  margin-top: 1rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  height: 20px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.upload-progress span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+/* Documents List */
+.documents-list {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.documents-list h2 {
+  margin: 0 0 1.5rem 0;
+  color: #495057;
+}
+
+.no-documents {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6c757d;
+}
+
+.document-item {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.document-item:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.document-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.document-header h3 {
+  margin: 0;
+  color: #495057;
+  flex: 1;
+}
+
+.document-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.document-info {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.document-status {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.document-date {
+  color: #6c757d;
+}
+
+.document-summary {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.document-summary h4 {
+  margin: 0 0 0.5rem 0;
+  color: #495057;
+  font-size: 0.875rem;
+}
+
+.document-summary p {
+  margin: 0;
+  color: #495057;
+  line-height: 1.5;
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .chat-container {
+    flex-direction: column;
+  }
+  
+  .sessions-sidebar {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .sessions-list {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  
+  .session-item {
+    min-width: 200px;
+    border-right: 1px solid #f8f9fa;
+    border-bottom: none;
+  }
+  
+  .message {
+    max-width: 95%;
+  }
+  
+  .document-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .document-actions {
+    align-self: flex-start;
+  }
+}

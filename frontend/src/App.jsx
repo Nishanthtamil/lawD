@@ -4,9 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import ChatPage from './pages/ChatPage';
-import DocumentsPage from './pages/DocumentsPage';
-import DocumentSummarizer from './components/DocumentSummarizer';
+import UnifiedChat from './components/UnifiedChat';
 import ProfilePage from './pages/ProfilePage';
 import './App.css';
 
@@ -18,14 +16,21 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected routes */}
+          {/* Protected routes - Unified Chat Interface */}
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ChatPage />
-                </Layout>
+                <UnifiedChat />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <UnifiedChat />
               </ProtectedRoute>
             }
           />
@@ -34,31 +39,7 @@ function App() {
             path="/chat/:sessionId"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ChatPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/documents"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DocumentsPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/documents/summarize"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DocumentSummarizer />
-                </Layout>
+                <UnifiedChat />
               </ProtectedRoute>
             }
           />

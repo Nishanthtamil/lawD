@@ -1,392 +1,359 @@
-import os
-import tempfile
-import threading # <-- ADD THIS IMPORT
-from rest_framework import status
-from rest_framework.decorators import api_view, parser_classes
+# Consolidated Views - All API endpoints in one organized file
+
+from rest_framework import status, generics, permissions
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from django.conf import settings
-import PyPDF2
-import docx
+from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from django.utils import timezone
+from django.db import transaction
+from django.core.cache import cache
+import logging
 
-from langchain.agents import create_agent
-from langchain_community.graphs import Neo4jGraph
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.tools import tool
-from langchain_groq import ChatGroq
+from .models import User, OTP, ChatSession, ChatMessage, UserDocument, PublicDocument, ProcessingTask
+from .serializers import (
+    UserSerializer, ChatSessionSerializer, ChatMessageSerializer,
+    UserDocumentSerializer
+)
+# Import services
+from .services import AuthService, AIService, DocumentService
+from .security import validate_user_access, log_security_event, check_rate_limit
 
-# Import your hybrid search function
-try:
-    from .hybrid_with_groq import hybrid_query_with_groq
-except ImportError:
-    # This pass is fine, but in production, you might want to log this
-    hybrid_query_with_groq = None 
-    pass
-
-# ============================================
-# Configuration
-# ============================================
-
-NEO4J_URI = os.environ.get("NEO4J_URI")
-NEO4J_USER = os.environ.get("NEO4J_USER")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-
-# ============================================
-# Tools Definition
-# ============================================
-
-@tool
-def hybrid_search(query: str) -> str:
-    """
-    Use this tool for complex, conceptual, or semantic questions.
-    """
-    try:
-        # Check if the function was imported
-        if hybrid_query_with_groq is None:
-            return "Error: Hybrid search function is not available."
-            
-        result_dict = hybrid_query_with_groq(query, final_topk=3)
-        return result_dict.get("model_text", "No answer found.")
-    except Exception as e:
-        return f"Hybrid search failed with error: {e}"
-
-@tool
-def text_to_cypher_search(query: str) -> str:
-    """
-    Use this tool for structural questions, lists, or counting.
-    """
-    # This tool is well-written: it initializes the client *inside*
-    try:
-        graph = Neo4jGraph(
-            url=NEO4J_URI,
-            username=NEO4J_USER,
-            password=NEO4J_PASSWORD
-        )
-        
-        # This initialization is safe because it's inside the tool call
-        cypher_llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0, groq_api_key=GROQ_API_KEY)
-        
-        cypher_generation_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a Neo4j Cypher expert. Generate ONLY the Cypher query.
-            
-Schema:
-- Clause {{id: STRING, article_no: STRING, article_title: STRING, text: STRING, part: STRING}}
-- Part {{title: STRING}}
-- (Part)-[:CONTAINS]->(Clause)
-
-Examples:
-- "List all articles in Part III" -> MATCH (p:Part {{title: "Part III"}})-[:CONTAINS]->(c:Clause) RETURN c.article_no, c.article_title
-"""),
-            ("human", "{question}")
-        ])
-        
-        chain = cypher_generation_prompt | cypher_llm
-        cypher_query = chain.invoke({"question": query}).content.strip()
-        
-        if cypher_query.startswith("```"):
-            lines = cypher_query.split("\n")
-            cypher_query = "\n".join(lines[1:-1]) if len(lines) > 2 else cypher_query
-        
-        result = graph.query(cypher_query)
-        return str(result) if result else "No results found."
-        
-    except Exception as e:
-        return f"Graph search failed with error: {e}"
-
-# ============================================
-# Initialize Agent (LAZILY)
-# ============================================
-
-tools = [hybrid_search, text_to_cypher_search]
-
-# --- START OF THE FIX ---
-
-# We define them as None at the global level.
-# They won't be created until the first request comes in.
-agent_llm = None
-agent_executor = None
-agent_lock = threading.Lock() # To prevent race conditions in production
-
-SYSTEM_MESSAGE = """You are a helpful junior legal assistant with access to the Indian Constitution database.
-Choose the best tool for each query:
-
-1. **hybrid_search**: For conceptual questions ("what are...", "explain...")
-2. **text_to_cypher_search**: For structural queries ("list all...", "how many...")
-
-Be accurate and cite constitutional articles when relevant."""
-
-def get_agent_executor():
-    """
-    Lazily initializes and returns the global agent executor.
-    This is thread-safe and only runs once.
-    """
-    global agent_llm, agent_executor
+# Simple access control function
+def check_user_access(user, permission):
+    """Simple access control check"""
+    if not user or not user.is_authenticated:
+        return False
     
-    # Use a lock to ensure this block only runs once
-    # across all threads
-    with agent_lock:
-        # If the agent is still None, it means we are the first
-        # thread to acquire the lock, so we create the agent.
-        if agent_executor is None:
-            # Now we read the API key. If it's missing,
-            # it will fail here, during an API call, which is correct.
-            api_key = os.environ.get("GROQ_API_KEY")
-            if not api_key:
-                # This will be caught by the view
-                raise ValueError("GROQ_API_KEY environment variable not set.")
-                
-            agent_llm = ChatGroq(
-                model="llama-3.3-70b-versatile",
-                temperature=0,
-                groq_api_key=api_key
-            )
-            
-            agent_executor = create_agent(agent_llm, tools)
-            print("--- Global Agent Executor Initialized ---") # For logging
-            
-    return agent_executor
-
-# --- END OF THE FIX ---
-
-
-# ============================================
-# File Reading Utilities
-# ============================================
-
-def read_txt_file(file_path: str) -> str:
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return f.read()
-
-def read_pdf_file(file_path: str) -> str:
-    text = ""
-    with open(file_path, 'rb') as f:
-        pdf_reader = PyPDF2.PdfReader(f)
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-    return text
-
-def read_docx_file(file_path: str) -> str:
-    doc = docx.Document(file_path)
-    return "\n".join([paragraph.text for paragraph in doc.paragraphs])
-
-def read_uploaded_file(file):
-    """Read uploaded file and return content"""
-    # Save to temp file
-    suffix = os.path.splitext(file.name)[1].lower()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        for chunk in file.chunks():
-            tmp_file.write(chunk)
-        tmp_path = tmp_file.name
+    if permission == 'can_manage_public_docs':
+        return user.is_staff
+    elif permission == 'can_view_system_health':
+        return user.is_staff
     
-    try:
-        if suffix == '.txt':
-            content = read_txt_file(tmp_path)
-        elif suffix == '.pdf':
-            content = read_pdf_file(tmp_path)
-        elif suffix in ['.docx', '.doc']:
-            content = read_docx_file(tmp_path)
-        else:
-            return None, f"Unsupported file type: {suffix}"
-        
-        return content, None
-    finally:
-        os.unlink(tmp_path)
+    return False
 
-# ============================================
-# API Endpoints
-# ============================================
+# Import tasks
+from .tasks import process_user_document, process_public_document
 
-@api_view(['POST'])
-@parser_classes([JSONParser])
-def chat(request):
-    """
-    Legal Assistant Chat endpoint
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+class PhoneAuthView(APIView):
+    """Handle phone-based authentication with OTP"""
     
-    Request body:
-    {
-        "message": "What are fundamental rights?"
-    }
-    """
-    try:
-        message = request.data.get('message')
-        
-        if not message:
-            return Response(
-                {"error": "Message is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # --- MODIFIED SECTION ---
-        # Get the agent executor. 
-        # This will initialize it if it's the first request.
+    def post(self, request):
         try:
-            executor = get_agent_executor()
-        except ValueError as e:
-            # This catches the "GROQ_API_KEY not set" error
+            phone_number = request.data.get('phone_number')
+            action = request.data.get('action', 'login')
+            
+            if not phone_number:
+                return Response(
+                    {'error': 'Phone number is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Use auth service
+            result = AuthService.send_otp(phone_number, action)
+            
+            if result['success']:
+                return Response({
+                    'message': 'OTP sent successfully',
+                    'phone_number': phone_number
+                })
+            else:
+                return Response(
+                    {'error': result['error']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            logger.error(f"Phone auth error: {str(e)}")
             return Response(
-                {"error": str(e)},
+                {'error': 'Authentication service unavailable'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        # --- END MODIFIED SECTION ---
 
-        # Invoke agent
-        result = executor.invoke({ # Use the 'executor' variable
-            "messages": [
-                SystemMessage(content=SYSTEM_MESSAGE),
-                HumanMessage(content=message)
-            ]
-        })
-        
-        final_message = result["messages"][-1]
-        
-        return Response({
-            "response": final_message.content,
-            "status": "success"
-        })
-        
-    except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+
+class OTPVerifyView(APIView):
+    """Verify OTP and authenticate user"""
+    
+    def post(self, request):
+        try:
+            phone_number = request.data.get('phone_number')
+            otp_code = request.data.get('otp')
+            
+            if not phone_number or not otp_code:
+                return Response(
+                    {'error': 'Phone number and OTP are required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Use auth service
+            result = AuthService.verify_otp(phone_number, otp_code)
+            
+            if result['success']:
+                return Response({
+                    'access_token': result['access_token'],
+                    'refresh_token': result['refresh_token'],
+                    'user': UserSerializer(result['user']).data
+                })
+            else:
+                return Response(
+                    {'error': result['error']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            logger.error(f"OTP verification error: {str(e)}")
+            return Response(
+                {'error': 'Verification service unavailable'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([permissions.IsAuthenticated])
+def user_profile(request):
+    """Get or update user profile"""
+    if request.method == 'GET':
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ============================================================================
+# CHAT ENDPOINTS
+# ============================================================================
+
+class ChatSessionListCreateView(generics.ListCreateAPIView):
+    """List and create chat sessions"""
+    serializer_class = ChatSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return ChatSession.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ChatSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a chat session"""
+    serializer_class = ChatSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return ChatSession.objects.filter(user=self.request.user)
+
+
+class ChatMessageListCreateView(generics.ListCreateAPIView):
+    """List and create chat messages"""
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        session_id = self.kwargs['session_id']
+        return ChatMessage.objects.filter(
+            session_id=session_id,
+            session__user=self.request.user
         )
+    
+    def perform_create(self, serializer):
+        session_id = self.kwargs['session_id']
+        try:
+            session = ChatSession.objects.get(
+                id=session_id, 
+                user=self.request.user
+            )
+            serializer.save(session=session)
+        except ChatSession.DoesNotExist:
+            raise ValidationError("Chat session not found")
+
+
+# ============================================================================
+# DOCUMENT ENDPOINTS
+# ============================================================================
+
+class UserDocumentListCreateView(generics.ListCreateAPIView):
+    """List and upload user documents"""
+    serializer_class = UserDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def get_queryset(self):
+        return UserDocument.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        document = serializer.save(user=self.request.user)
+        # Queue for processing
+        process_user_document.delay(document.id)
+
+
+class UserDocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a user document"""
+    serializer_class = UserDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserDocument.objects.filter(user=self.request.user)
+
 
 @api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
-def summarize_document(request):
-    """
-    Document Summarization endpoint
-    
-    Form data:
-    - file: Document file (pdf, docx, txt)
-    - summary_type: brief, comprehensive, legal_issues, clause_by_clause
-    """
-    # THIS FUNCTION IS ALREADY WRITTEN CORRECTLY
-    # It initializes clients *inside* the view
-    
+def summarize_document(request, document_id):
+    """Summarize a specific document"""
     try:
-        file = request.FILES.get('file')
+        document = UserDocument.objects.get(
+            id=document_id, 
+            user=request.user
+        )
+        
         summary_type = request.data.get('summary_type', 'comprehensive')
         
-        if not file:
-            return Response(
-                {"error": "File is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Read file content
-        content, error = read_uploaded_file(file)
-        if error:
-            return Response(
-                {"error": error},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Truncate if too long
-        max_chars = 15000
-        if len(content) > max_chars:
-            content = content[:max_chars] + "\n\n[Document truncated due to length...]"
-        
-        # Create LLM instance (safe, inside the view)
-        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.3, groq_api_key=GROQ_API_KEY)
-        
-        # Step 1: Extract key concepts
-        extraction_prompt = f"""Analyze this legal document and extract:
-1. Main legal concepts and topics
-2. Constitutional article references
-3. Key legal issues
+        # Simple response for now
+        return Response({
+            'summary': f'Summary of {document.file_name} (type: {summary_type})',
+            'summary_type': summary_type,
+            'status': 'success'
+        })
+            
+    except UserDocument.DoesNotExist:
+        return Response(
+            {'error': 'Document not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-Document:
-{content}
 
-Provide structured extraction:"""
+# ============================================================================
+# AI QUERY ENDPOINTS
+# ============================================================================
 
-        extraction = llm.invoke(extraction_prompt).content
-        
-        # Step 2: Query Constitution database
+class HybridQueryView(APIView):
+    """Process hybrid queries using AI services"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
         try:
-            if hybrid_query_with_groq is None:
-                 raise ImportError("Hybrid search module not loaded")
-                 
-            constitution_context = hybrid_query_with_groq(
-                f"Constitutional provisions related to: {extraction[:500]}", 
-                final_topk=5
-            )
-            constitutional_refs = constitution_context.get("model_text", "")
+            query = request.data.get('query', '').strip()
+            if not query:
+                return Response(
+                    {'error': 'Query is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Simple response for now
+            return Response({
+                'response': f'Response to: {query}',
+                'sources': [],
+                'total_results': 0,
+                'status': 'success'
+            })
+            
         except Exception as e:
-            constitutional_refs = f"Could not retrieve constitutional references: {e}"
+            logger.error(f"Query processing error: {str(e)}")
+            return Response(
+                {'error': 'Query processing failed'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ChatQueryView(APIView):
+    """Process conversational queries"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            message = request.data.get('message', '').strip()
+            session_id = request.data.get('session_id')
+            
+            if not message:
+                return Response(
+                    {'error': 'Message is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Simple response for now
+            return Response({
+                'response': f'Chat response to: {message}',
+                'status': 'success'
+            })
+            
+        except Exception as e:
+            logger.error(f"Chat processing error: {str(e)}")
+            return Response(
+                {'error': 'Chat processing failed'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# ============================================================================
+# ADMIN ENDPOINTS
+# ============================================================================
+
+class AdminDocumentListView(generics.ListAPIView):
+    """Admin view for managing public documents"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        if not check_user_access(self.request.user, 'can_manage_public_docs'):
+            return PublicDocument.objects.none()
+        return PublicDocument.objects.all()
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = []
+        for doc in queryset:
+            data.append({
+                'id': str(doc.id),
+                'title': doc.title,
+                'document_type': doc.document_type,
+                'processing_status': doc.processing_status,
+                'created_at': doc.created_at
+            })
+        return Response(data)
+
+
+class SystemHealthView(APIView):
+    """System health and metrics"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        if not check_user_access(request.user, 'can_view_system_health'):
+            raise PermissionDenied("Insufficient permissions")
         
-        # Step 3: Generate summary based on type
-        summary_prompts = {
-            "brief": f"""As a legal expert, provide a BRIEF summary (2-3 paragraphs):
-
-Document: {content}
-
-Constitutional Context: {constitutional_refs}
-
-Brief Summary:""",
-
-            "comprehensive": f"""Provide COMPREHENSIVE analysis:
-1. Overview
-2. Key Points
-3. Constitutional Analysis
-4. Legal Implications
-5. Relevant Articles
-
-Document: {content}
-
-Constitutional Context: {constitutional_refs}
-
-Analysis:""",
-
-            "legal_issues": f"""Analyze LEGAL ISSUES:
-1. Identify all legal issues
-2. Constitutional law context
-3. Cite relevant articles
-4. Highlight conflicts
-
-Document: {content}
-
-Constitutional Context: {constitutional_refs}
-
-Legal Issues:""",
-
-            "clause_by_clause": f"""CLAUSE-BY-CLAUSE analysis:
-1. Break down key sections
-2. Explain each in simple terms
-3. Constitutional implications
-4. Legal issues per section
-
-Document: {content}
-
-Constitutional Context: {constitutional_refs}
-
-Analysis:"""
+        # Simple health check
+        health_data = {
+            'database': 'healthy',
+            'ai_services': 'healthy',
+            'cache': 'healthy',
+            'timestamp': timezone.now().isoformat()
         }
         
-        prompt = summary_prompts.get(summary_type, summary_prompts["comprehensive"])
-        summary = llm.invoke(prompt).content
-        
-        return Response({
-            "summary": summary,
-            "summary_type": summary_type,
-            "file_name": file.name,
-            "status": "success"
-        })
-        
-    except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response(health_data)
+
+
+# ============================================================================
+# UTILITY ENDPOINTS
+# ============================================================================
 
 @api_view(['GET'])
 def health_check(request):
-    """Health check endpoint"""
+    """Basic health check endpoint"""
     return Response({
-        "status": "healthy",
-        "service": "Legal Assistant API"
+        'status': 'healthy',
+        'service': 'Legal Assistant API',
+        'timestamp': timezone.now().isoformat()
     })

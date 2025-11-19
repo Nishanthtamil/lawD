@@ -24,6 +24,91 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # Neo4j Graph Database
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: legal_ai_neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 2G
+      NEO4J_dbms_memory_pagecache_size: 1G
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    restart: unless-stopped
+
+  # Milvus Standalone (includes etcd and minio)
+  etcd:
+    container_name: legal_ai_milvus_etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  minio:
+    container_name: legal_ai_milvus_minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  milvus:
+    container_name: legal_ai_milvus
+    image: milvusdb/milvus:v2.3.4
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    restart: unless-stopped
+
   # Backend Django Application
   backend:
     build:
@@ -41,6 +126,16 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - MILVUS_USER=${MILVUS_USER:-}
+      - MILVUS_PASSWORD=${MILVUS_PASSWORD:-}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-mpnet-base-v2}
+      - CROSS_ENCODER_MODEL=${CROSS_ENCODER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
     ports:
       - "8000:8000"
     volumes:
@@ -49,9 +144,12 @@ services:
     depends_on:
       - postgres
       - redis
+      - neo4j
+      - milvus
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py init_milvus &&
              python manage.py collectstatic --noinput &&
              gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3"
 
@@ -72,14 +170,26 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - MILVUS_USER=${MILVUS_USER:-}
+      - MILVUS_PASSWORD=${MILVUS_PASSWORD:-}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-mpnet-base-v2}
+      - CROSS_ENCODER_MODEL=${CROSS_ENCODER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
     volumes:
       - ./backend:/app
       - media_files:/app/media
     depends_on:
       - postgres
       - redis
+      - neo4j
+      - milvus
     restart: unless-stopped
-    command: celery -A backend worker --loglevel=info
+    command: celery -A backend worker --loglevel=info --concurrency=2
 
   # Celery Beat (for scheduled tasks)
   celery_beat:
@@ -98,13 +208,48 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - MILVUS_USER=${MILVUS_USER:-}
+      - MILVUS_PASSWORD=${MILVUS_PASSWORD:-}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+      - neo4j
+      - milvus
+    restart: unless-stopped
+    command: celery -A backend beat --loglevel=info
+
+  # Queue Monitoring Service
+  celery_monitor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal_ai_celery_monitor
+    environment:
+      - DEBUG=False
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-legal_ai_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./backend:/app
     depends_on:
       - postgres
       - redis
     restart: unless-stopped
-    command: celery -A backend beat --loglevel=info
+    command: python manage.py monitor_processing_queue
 
   # Frontend React Application
   frontend:
@@ -139,6 +284,13 @@ volumes:
   redis_data:
   media_files:
   nginx_logs:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  etcd_data:
+  minio_data:
+  milvus_data:
 
 networks:
   default:

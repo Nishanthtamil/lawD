@@ -1,32 +1,55 @@
-from django.urls import path
-from . import views, auth_views, chat_views, document_views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+from . import admin_document_views
+
+router = DefaultRouter()
 
 urlpatterns = [
+    path('', include(router.urls)),
+    
+    # ============================================================================
+    # AUTHENTICATION ENDPOINTS
+    # ============================================================================
+    path('auth/phone/', views.PhoneAuthView.as_view(), name='phone_auth'),
+    path('auth/verify/', views.OTPVerifyView.as_view(), name='otp_verify'),
+    path('auth/profile/', views.user_profile, name='user_profile'),
+    
+    # ============================================================================
+    # CHAT ENDPOINTS
+    # ============================================================================
+    path('chat/sessions/', views.ChatSessionListCreateView.as_view(), name='chat_sessions'),
+    path('chat/sessions/<int:pk>/', views.ChatSessionDetailView.as_view(), name='chat_session_detail'),
+    path('chat/sessions/<int:session_id>/messages/', views.ChatMessageListCreateView.as_view(), name='chat_messages'),
+    
+    # ============================================================================
+    # DOCUMENT ENDPOINTS
+    # ============================================================================
+    path('documents/', views.UserDocumentListCreateView.as_view(), name='user_documents'),
+    path('documents/<int:pk>/', views.UserDocumentDetailView.as_view(), name='user_document_detail'),
+    path('documents/<int:document_id>/summarize/', views.summarize_document, name='summarize_document'),
+    
+    # ============================================================================
+    # AI QUERY ENDPOINTS
+    # ============================================================================
+    path('query/', views.HybridQueryView.as_view(), name='hybrid_query'),
+    path('query/chat/', views.ChatQueryView.as_view(), name='chat_query'),
+    
+    # ============================================================================
+    # ADMIN ENDPOINTS
+    # ============================================================================
+    path('admin/documents/', views.AdminDocumentListView.as_view(), name='admin_documents'),
+    path('admin/documents/upload/', admin_document_views.upload_public_document, name='admin_upload_document'),
+    path('admin/documents/list/', admin_document_views.list_public_documents, name='admin_list_documents'),
+    path('admin/documents/<uuid:document_id>/', admin_document_views.get_public_document, name='admin_get_document'),
+    path('admin/documents/<uuid:document_id>/update/', admin_document_views.update_public_document, name='admin_update_document'),
+    path('admin/documents/<uuid:document_id>/delete/', admin_document_views.delete_public_document, name='admin_delete_document'),
+    path('admin/documents/<uuid:document_id>/reprocess/', admin_document_views.reprocess_public_document, name='admin_reprocess_document'),
+    path('admin/processing-queue/', admin_document_views.admin_processing_queue, name='admin_processing_queue'),
+    path('admin/system-health/', views.SystemHealthView.as_view(), name='system_health'),
+    
+    # ============================================================================
+    # HEALTH CHECK
+    # ============================================================================
     path('health/', views.health_check, name='health_check'),
-    path('chat/', views.chat, name='chat'),
-    path('summarize/', views.summarize_document, name='summarize_document'),
-    path('auth/send-otp/', auth_views.send_otp, name='send_otp'),
-    path('auth/verify-otp/', auth_views.verify_otp, name='verify_otp'),
-    path('auth/logout/', auth_views.logout, name='logout'),
-    path('auth/profile/', auth_views.get_profile, name='get_profile'),
-    path('auth/profile/update/', auth_views.update_profile, name='update_profile'),
-    
-    # Chat Sessions
-    path('chat/sessions/', chat_views.list_chat_sessions, name='list_chat_sessions'),
-    path('chat/sessions/create/', chat_views.create_chat_session, name='create_chat_session'),
-    path('chat/sessions/<uuid:session_id>/', chat_views.get_chat_session, name='get_chat_session'),
-    path('chat/sessions/<uuid:session_id>/update/', chat_views.update_chat_session, name='update_chat_session'),
-    path('chat/sessions/<uuid:session_id>/delete/', chat_views.delete_chat_session, name='delete_chat_session'),
-    path('chat/sessions/<uuid:session_id>/messages/', chat_views.get_session_messages, name='get_session_messages'),
-    path('chat/sessions/<uuid:session_id>/messages/send/', chat_views.send_message, name='send_message'),
-    path('chat/sessions/<uuid:session_id>/messages/clear/', chat_views.clear_session_messages, name='clear_session_messages'),
-    
-    # Documents
-    path('documents/', document_views.list_documents, name='list_documents'),
-    path('documents/upload/', document_views.upload_document, name='upload_document'),
-    path('documents/<uuid:document_id>/', document_views.get_document, name='get_document'),
-    path('documents/<uuid:document_id>/summarize/', document_views.summarize_user_document, name='summarize_user_document'),
-    path('documents/<uuid:document_id>/delete/', document_views.delete_document, name='delete_document'),
-    path('documents/<uuid:document_id>/download/', document_views.download_document, name='download_document'),
-
 ]

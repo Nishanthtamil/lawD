@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -65,7 +66,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # <-- Make sure it looks exactly like this
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -86,7 +87,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
@@ -131,6 +132,14 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
+
+# Use SQLite for testing
+import sys
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:'
+    }
 
 AUTH_USER_MODEL = 'api.User'
 
@@ -213,6 +222,12 @@ NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
 
+# Milvus Settings
+MILVUS_HOST = os.environ.get("MILVUS_HOST", "localhost")
+MILVUS_PORT = os.environ.get("MILVUS_PORT", "19530")
+MILVUS_USER = os.environ.get("MILVUS_USER", "")
+MILVUS_PASSWORD = os.environ.get("MILVUS_PASSWORD", "")
+
 # Groq API
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
@@ -226,10 +241,48 @@ CACHES = {
         'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 20,
+                'retry_on_timeout': True,
+                'socket_keepalive': True,
+                'socket_keepalive_options': {},
+                'health_check_interval': 30,
+            },
+            'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
         },
         'KEY_PREFIX': 'legal_ai',
         'TIMEOUT': 300,  # 5 minutes default
-    }
+        'VERSION': 1,
+    },
+    # Separate cache for sessions
+    'sessions': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 10,
+                'retry_on_timeout': True,
+            },
+        },
+        'KEY_PREFIX': 'legal_ai_sessions',
+        'TIMEOUT': 86400,  # 24 hours for sessions
+    },
+    # Cache for query results
+    'query_cache': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 15,
+                'retry_on_timeout': True,
+            },
+        },
+        'KEY_PREFIX': 'legal_ai_queries',
+        'TIMEOUT': 300,  # 5 minutes for queries
+    },
 }
 
 # Session Configuration
@@ -260,3 +313,106 @@ CELERY_BEAT_SCHEDULE = {
 # Rate Limiting Configuration
 RATELIMIT_USE_CACHE = 'default'
 RATELIMIT_ENABLE = True
+
+# Security Audit Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'security_audit': {
+            'format': '{asctime} [SECURITY] {levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        **({} if 'test' in sys.argv else {
+            'security_file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': os.path.join(BASE_DIR, 'logs', 'security_audit.log'),
+                'maxBytes': 10485760,  # 10MB
+                'backupCount': 5,
+                'formatter': 'security_audit',
+            },
+            'access_file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': os.path.join(BASE_DIR, 'logs', 'access.log'),
+                'maxBytes': 10485760,  # 10MB
+                'backupCount': 5,
+                'formatter': 'verbose',
+            },
+        })
+    },
+    'loggers': {
+        'security_audit': {
+            'handlers': ['console'] if 'test' in sys.argv else ['security_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'api.access_control': {
+            'handlers': ['console'] if 'test' in sys.argv else ['access_file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+# Ensure logs directory exists
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Security Settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Data Protection Settings
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+FILE_UPLOAD_PERMISSIONS = 0o644
+
+# Encryption Settings
+ENCRYPTION_MASTER_KEY = os.environ.get('ENCRYPTION_MASTER_KEY')
+HMAC_SECRET_KEY = os.environ.get('HMAC_SECRET_KEY', SECRET_KEY)
+
+# File Upload Security
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'temp_uploads')
+os.makedirs(FILE_UPLOAD_TEMP_DIR, exist_ok=True)
+
+# Security Configuration
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = 'Strict'
+
+# Content Security Policy
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", "data:", "https:")
+CSP_FONT_SRC = ("'self'", "https:")
+CSP_CONNECT_SRC = ("'self'", "https:")
+CSP_FRAME_ANCESTORS = ("'none'",)
