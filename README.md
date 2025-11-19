@@ -220,7 +220,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Issues**: [GitHub Issues](https://github.com/Nishanthtamil/lawD/issues)
-- **Documentation**: Check the `/docs` folder for detailed guides
 - **Twilio Support**: [Twilio Help Center](https://support.twilio.com/)
 
 ## 🚀 Deployment Status
@@ -234,4 +233,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ for the legal community**
